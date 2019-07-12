@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -32,15 +33,22 @@ type Log struct {
 
 // NewLogger creates a new, leveled Log. The given level is the allowed minimal level.
 func NewLogger(logLevel string) Log {
-	levelOpt := evaluateLogLevel(logLevel)
+	levelOpt, err := evaluateLogLevel(logLevel)
 
 	var kitLogger log.Logger
 	kitLogger = log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
 	kitLogger = level.NewFilter(kitLogger, levelOpt)
 
-	return Log{
+	log := Log{
 		kitLogger: kitLogger,
 	}
+
+	// the error from evaluateLogLevel needs to be logged
+	if err != nil {
+		log.Warning("", "err", err)
+	}
+
+	return log
 }
 
 // NewLoggerFromEnv creates a new Log, configuring the log level using an environment variable.
@@ -76,19 +84,19 @@ func (l Log) Error(message string, keyvals ...interface{}) {
 
 // evaluateLogLevel maps a given logLevel as string (e.g. from an ENV variable) to a level Option.
 // If the passed logLevel does not exist, all levels will be enabled by default.
-func evaluateLogLevel(logLevel string) level.Option {
+func evaluateLogLevel(logLevel string) (level.Option, error) {
 	logLevel = strings.ToLower(logLevel)
 	switch logLevel {
 	case LevelDebug:
-		return level.AllowDebug()
+		return level.AllowDebug(), nil
 	case LevelInfo:
-		return level.AllowInfo()
+		return level.AllowInfo(), nil
 	case LevelWarning:
-		return level.AllowWarn()
+		return level.AllowWarn(), nil
 	case LevelError:
-		return level.AllowError()
+		return level.AllowError(), nil
 	default:
-		return level.AllowAll()
+		return level.AllowAll(), fmt.Errorf("invalid log-level passed, displaying all logs")
 	}
 }
 
