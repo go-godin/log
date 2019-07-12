@@ -5,8 +5,7 @@ import (
 )
 
 func main() {
-	logger := log.NewLoggerFromEnv()
-	//logger := log.NewLogger("")
+	var logger = log.NewLoggerFromEnv()
 
 	logger.Debug("test", "foo", "bar")
 	logger.Info("test", "foo", "bar")

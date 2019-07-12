@@ -16,6 +16,7 @@ type Logger interface {
 	Info(message string, keyvals ...interface{})
 	Warning(message string, keyvals ...interface{})
 	Error(message string, keyvals ...interface{})
+	With(keyvals ...interface{}) Logger
 }
 
 const (
@@ -82,6 +83,18 @@ func (l Log) Error(message string, keyvals ...interface{}) {
 	_ = level.Error(l.kitLogger).Log(l.mergeKeyValues(message, keyvals)...)
 }
 
+func (l Log) With(keyvals ...interface{}) Logger {
+	if len(keyvals) == 0 {
+		return l
+	}
+
+	kitLogger := log.With(l.kitLogger, keyvals...)
+
+	return Log{
+		kitLogger: kitLogger,
+	}
+}
+
 // evaluateLogLevel maps a given logLevel as string (e.g. from an ENV variable) to a level Option.
 // If the passed logLevel does not exist, all levels will be enabled by default.
 func evaluateLogLevel(logLevel string) (level.Option, error) {
@@ -96,7 +109,7 @@ func evaluateLogLevel(logLevel string) (level.Option, error) {
 	case LevelError:
 		return level.AllowError(), nil
 	default:
-		return level.AllowAll(), fmt.Errorf("invalid log-level passed, displaying all logs")
+		return level.AllowAll(), fmt.Errorf("no log-level passed, falling back to debug")
 	}
 }
 
