@@ -60,7 +60,7 @@ func NewLoggerFromEnv() Log {
 
 // Log redirects to go-kit/log.Log
 func (l Log) Log(keyvals ...interface{}) {
-	_ = l.kitLogger.Log(keyvals)
+	_ = l.kitLogger.Log(keyvals...)
 }
 
 // Debug will log a message and arbitrary key-value pairs
