@@ -16,7 +16,7 @@ type Logger interface {
 	Info(message string, keyvals ...interface{})
 	Warning(message string, keyvals ...interface{})
 	Error(message string, keyvals ...interface{})
-	With(keyvals ...interface{}) Logger
+	With(keyvals ...interface{}) Log
 }
 
 const (
