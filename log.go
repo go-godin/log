@@ -83,7 +83,7 @@ func (l Log) Error(message string, keyvals ...interface{}) {
 	_ = level.Error(l.kitLogger).Log(l.mergeKeyValues(message, keyvals)...)
 }
 
-func (l Log) With(keyvals ...interface{}) Logger {
+func (l Log) With(keyvals ...interface{}) Log {
 	if len(keyvals) == 0 {
 		return l
 	}
