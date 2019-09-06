@@ -11,4 +11,6 @@ func main() {
 	logger.Info("test", "foo", "bar")
 	logger.Warning("test", "foo", "bar")
 	logger.Error("test", "foo", "bar")
+
+	logger = logger.With(logger, "foo", "bar")
 }

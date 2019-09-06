@@ -1,12 +1,15 @@
 package log
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-godin/log/level"
 	"github.com/go-kit/kit/log"
+	stdzipkin "github.com/openzipkin/zipkin-go"
 )
 
 // Logger is the default logging interface which is used throughout all godin services.
@@ -17,6 +20,7 @@ type Logger interface {
 	Warning(message string, keyvals ...interface{})
 	Error(message string, keyvals ...interface{})
 	With(keyvals ...interface{}) Log
+	WithTrace(ctx context.Context) Log
 }
 
 const (
@@ -30,6 +34,7 @@ const (
 
 type Log struct {
 	kitLogger log.Logger
+	span      stdzipkin.Span
 }
 
 // NewLogger creates a new, leveled Log. The given level is the allowed minimal level.
@@ -58,8 +63,30 @@ func NewLoggerFromEnv() Log {
 	return NewLogger(levelStr)
 }
 
+func (l Log) SetLevel(logLevel string) {
+	lvl, err := evaluateLogLevel(logLevel)
+	if err != nil {
+		lvl = level.AllowInfo()
+	}
+	l.kitLogger = level.NewFilter(l.kitLogger, lvl)
+}
+
+func (l Log) WithTrace(ctx context.Context) Log {
+	if span := stdzipkin.SpanFromContext(ctx); span != nil {
+		return Log{
+			kitLogger: l.kitLogger,
+			span:      span,
+		}
+	}
+	return Log{
+		kitLogger: l.kitLogger,
+		span:      nil,
+	}
+}
+
 // Log redirects to go-kit/log.Log
 func (l Log) Log(keyvals ...interface{}) {
+	l.handleTrace("", keyvals)
 	_ = l.kitLogger.Log(keyvals...)
 }
 
@@ -70,16 +97,19 @@ func (l Log) Debug(message string, keyvals ...interface{}) {
 
 // Info will log a message and arbitrary key-value pairs
 func (l Log) Info(message string, keyvals ...interface{}) {
+	l.handleTrace(message, keyvals)
 	_ = level.Info(l.kitLogger).Log(l.mergeKeyValues(message, keyvals)...)
 }
 
 // Warning will log a message and arbitrary key-value pairs
 func (l Log) Warning(message string, keyvals ...interface{}) {
+	l.handleTrace(message, keyvals)
 	_ = level.Warn(l.kitLogger).Log(l.mergeKeyValues(message, keyvals)...)
 }
 
 // Error will log a message and arbitrary key-value pairs
 func (l Log) Error(message string, keyvals ...interface{}) {
+	l.handleTrace(message, keyvals)
 	_ = level.Error(l.kitLogger).Log(l.mergeKeyValues(message, keyvals)...)
 }
 
@@ -92,6 +122,21 @@ func (l Log) With(keyvals ...interface{}) Log {
 
 	return Log{
 		kitLogger: kitLogger,
+		span:      l.span,
+	}
+}
+
+func (l Log) handleTrace(message string, keyvals []interface{}) {
+	if l.span != nil {
+		if message != "" {
+			l.span.Annotate(time.Now(), message)
+		}
+		for i := 0; i < len(keyvals); i += 2 {
+			if i >= len(keyvals) || i+1 >= len(keyvals) {
+				break // break only for the uneven keyval combination, all others will be tagged
+			}
+			l.span.Tag(fmt.Sprint(keyvals[i]), fmt.Sprint(keyvals[i+1]))
+		}
 	}
 }
 
